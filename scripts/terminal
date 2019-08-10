@@ -1,0 +1,9 @@
+train
+python2 main.py --lr 0.1 --net_type wide-resnet --depth 28 --widen_factor 10 --dropout 0.3 --dataset cifar100
+
+python2 main.py --lr 0.1 --net_type wide-resnet --depth 28 --widen_factor 10 --dropout 0.3 --dataset cifar100 --loss bce --sharing 1.0 --ent 1.0
+
+test_detection
+python2 test_detection.py --net_type wide-resnet --depth 28 --widen_factor 10 --dropout 0.3 --dataset cifar100 --out_dataset Tiny --mode softmax --check_point original_81%
+python2 test_detection.py --net_type wide-resnet --depth 28 --widen_factor 10 --dropout 0.3 --dataset cifar100 --out_dataset Tiny --mode sigmoid --check_point sharing_real_0.1sig_1.0ent_77.22%
+
