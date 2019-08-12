@@ -212,7 +212,6 @@ if use_cuda:
 
 net.eval()
 
-
 def generate_target():
     net.eval()
     correct = 0
@@ -307,6 +306,23 @@ def generate_target():
                 output = full_output[i].view(1,-1)
                 soft_out = F.sigmoid(output)
                 f3.write("{:.4f}\n".format(soft_out[0, num_classes]))
+            elif args.mode == 'only_sharing_node':
+                soft_out = 1. - F.sigmoid(output[:,-1]).view(1,-1)
+                # print(soft_out.size())
+                # print(soft_out)
+                
+                # print(torch.max(soft_out.data))
+                # exit()
+            elif args.mode == 'sharing_node_print_include_softmax' : 
+                output = full_output[i].view(1,-1)
+                soft_out = F.softmax(output)
+                f9.write("{:.4f}\n".format(torch.max(soft_out[:,:num_classes].data)))
+                
+                sharing = output[0,-1].view(1,1)
+                one_max_logit = max_logit[i].view(1,1)
+                two_logits = torch.cat((one_max_logit, sharing), dim=1)
+                soft_out = (1. - F.softmax(two_logits))[:,-1]
+                f3.write("{:.4f}\n".format(float(soft_out.data.cpu())))
             else :
                 assert()
             
@@ -415,6 +431,18 @@ def generate_non_target():
                 output = full_output[i].view(1,-1)
                 soft_out = F.sigmoid(output)
                 f4.write("{:.4f}\n".format(soft_out[0, num_classes]))
+            elif args.mode == 'only_sharing_node':
+                soft_out = 1. - F.sigmoid(output[:,-1]).view(1,-1)
+            elif args.mode == 'sharing_node_print_include_softmax' : 
+                output = full_output[i].view(1,-1)
+                soft_out = F.softmax(output)
+                f10.write("{:.4f}\n".format(torch.max(soft_out[:,:num_classes].data)))
+                
+                sharing = output[0,-1].view(1,1)
+                one_max_logit = max_logit[i].view(1,1)
+                two_logits = torch.cat((one_max_logit, sharing), dim=1)
+                soft_out = (1. - F.softmax(two_logits))[:,-1]
+                f4.write("{:.4f}\n".format(float(soft_out.data.cpu())))
             else :
                 assert()
             # print(soft_out.sum())

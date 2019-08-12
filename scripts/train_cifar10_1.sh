@@ -3,7 +3,7 @@
 # 1
 export dataset='cifar10'
 # export out_dataset='SVHN'
-export save=./checkpoint/$dataset/`(date "+%Y%m%d-%H%M%S")`'_cuda1__0drop_softmax_101epoch'/
+export save=./checkpoint/$dataset/`(date "+%Y%m%d-%H%M%S")`'_cuda1__0drop_1.0sig_1.0ce_10.0ent_101epoch'/
 
 mkdir -p $save
 mkdir $save/copy
@@ -19,8 +19,13 @@ CUDA_VISIBLE_DEVICES=1 python2 src/main.py \
 --dropout 0.0 \
 --dataset $dataset \
 \
---loss ce \
+--loss bce \
+--bce_scale 1.0 \
+--sharing 1.0 \
+--ent 10.0 \
+--pretrained 'wide-resnet' \
 # --unknown_is_True True \
+# --sampling_rate 0.3 \
 # --resume
 # --sepa_unknown_sharing True \
 ##########################

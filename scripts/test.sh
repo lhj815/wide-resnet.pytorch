@@ -1,22 +1,27 @@
-export check_point='1'
+# export check_point='20190810-233740gpu1_softmax_ent0.1_300epoch_81.41%'
+export check_point='original_81.05%'
+
 export dataset='cifar100'
 export out_dataset='Tiny'
 export mode='softmax'
+export batch_size=100
 export outf='./results/test_detection'/$dataset/$out_dataset'_'`(date "+%Y%m%d-%H%M%S")`'_'$mode'_'$check_point
-# export input_preproc_noise_magni=0.0014
-# export outf='./results/test_detection'/$dataset/$out_dataset'_'`(date "+%Y%m%d-%H%M%S")`'_'$mode'_'$check_point'_'$input_preproc_noise_magni/
+# export input_preproc_noise_magni=0.1
+# export batch_size=2
+# export outf='./results/test_detection'/$dataset/$out_dataset'_'`(date "+%Y%m%d-%H%M%S")`'_'$mode'_'$check_point'_batch'$batch_size'_'$input_preproc_noise_magni/
 # export odin=1000
-# export outf='./results/test_detection'/$dataset/$out_dataset'_'`(date "+%Y%m%d-%H%M%S")`'_'$mode'_'$check_point'_'$odin'_'$input_preproc_noise_magni/
+# export outf='./results/test_detection'/$dataset/$out_dataset'_'`(date "+%Y%m%d-%H%M%S")`'_'$mode'_'$check_point'_batch'$batch_size'_'$odin'_'$input_preproc_noise_magni/
 
 
 
 
 CUDA_VISIBLE_DEVICES=1 python2 src/test_detection.py \
+--batch_size $batch_size \
 --outf $outf \
 --net_type wide-resnet \
 --depth 28 \
 --widen_factor 10 \
---dropout 0.3 \
+--dropout 0.0 \
 \
 --dataset $dataset \
 --out_dataset $out_dataset \

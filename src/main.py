@@ -35,6 +35,7 @@ parser.add_argument('--resume', '-r', action='store_true', help='resume from che
 parser.add_argument('--testOnly', '-t', action='store_true', help='Test mode with the saved model')
 parser.add_argument('--inferOnly', '-infer', default=False)# action='store_true', help='inference mode with the saved model (without accuracy)')
 parser.add_argument('--loss', '-l', default='ce', help='ce / bce / bce_and_ce ')
+parser.add_argument('--ce_entropy', type=float, default=0. )
 parser.add_argument('--bce_scale', type=float , default=1.)
 parser.add_argument('--ent', type=float, default=0.0, help='entropy_maximization weight beta')
 parser.add_argument('--sharing', type=float, default=None, help='weight of CE between sharing node and target node')
@@ -191,8 +192,8 @@ if use_cuda:
     net = torch.nn.DataParallel(net, device_ids=range(1))
     # cudnn.benchmark = True
 
-criterion = nn.CrossEntropyLoss()
-criterion2 = nn.BCELoss()
+criterion_CE = nn.CrossEntropyLoss()
+criterion_BCE = nn.BCELoss()
 entropy = HLoss()
 sharing_entropy = HLoss_for_3d_tensor()
 
@@ -208,6 +209,8 @@ def train(epoch):
     temp2_accum = 0
     sigmoid_sum_loss = 0
     sharing_node_loss = 0
+    ce_loss = torch.zeros((1)).cuda()
+    entropy_loss = torch.zeros((1)).cuda()
     num_classes = args.num_classes
     optimizer = optim.SGD(net.parameters(), lr=cf.learning_rate(args.lr, epoch), nesterov=True,momentum=0.9, weight_decay=5e-4)
     # optimizer = optim.Adam(net.parameters(), lr=cf.learning_rate(args.lr, epoch), betas=(0.5,0.999), weight_decay=5e-4)
@@ -229,8 +232,11 @@ def train(epoch):
             outputs, targets = sampling_for_loss(outputs, targets, num_sampling, num_classes=num_classes, sharing=False)
 
 
-        loss = criterion(outputs[:,:num_sampling], targets)  # Loss
-        ce_loss = torch.zeros((1)).cuda()
+        loss = criterion_CE(outputs[:,:num_sampling], targets)  # Loss
+        if args.loss == 'ce' and args.ce_entropy != 0. :
+            entropy_loss = args.ce_entropy * entropy(outputs)
+            loss += entropy_loss
+        
         unknown_node_loss = torch.zeros((1)).cuda()
         temp1_accum = loss.detach().cpu() * (1./(batch_idx+1.)) + temp1_accum * (batch_idx/(batch_idx+1.))
         
@@ -243,17 +249,17 @@ def train(epoch):
             #     num_sampling = int(num_classes * args.sampling_rate)
             #     outputs, targets = sampling_for_loss(outputs, targets, num_sampling)
             #     new_bce_targets = target_transform_for_elementwise_bce(targets, num_sampling)
-            #     temp2 = args.bce_scale * criterion2(F.sigmoid(outputs[:,:num_sampling]), new_bce_targets).cuda()
+            #     temp2 = args.bce_scale * criterion_BCE(F.sigmoid(outputs[:,:num_sampling]), new_bce_targets).cuda()
             # else:
             num_sampling = int(num_classes * args.sampling_rate)
             if args.sampling_rate != 1. :
                 full_output = outputs
                 outputs, targets = sampling_for_loss(outputs, targets, num_sampling, num_classes=num_classes)
                 new_bce_targets = target_transform_for_elementwise_bce(targets, num_sampling).cuda()
-                temp2 = args.bce_scale * criterion2(F.sigmoid(outputs[:,:num_sampling]), new_bce_targets)
+                temp2 = args.bce_scale * criterion_BCE(F.sigmoid(outputs[:,:num_sampling]), new_bce_targets)
             else:
                 bce_targets = target_transform_for_elementwise_bce(targets, num_classes).cuda()
-                temp2 = args.bce_scale * criterion2(F.sigmoid(outputs[:,:num_classes]), bce_targets).cuda()
+                temp2 = args.bce_scale * criterion_BCE(F.sigmoid(outputs[:,:num_classes]), bce_targets).cuda()
             temp2_accum = temp2.detach().cpu() * (1./(batch_idx+1.)) + temp2_accum *  (batch_idx/(batch_idx+1.))
             
             if args.sigmoid_sum is not None :
@@ -267,7 +273,7 @@ def train(epoch):
 
             loss += temp2
 
-        entropy_loss = args.ent * entropy(outputs)
+        
 
 
         if args.sharing is not None :
@@ -316,7 +322,7 @@ def train(epoch):
                 
                 # if weight >= 0.1 :
                 #     weight = 0.1
-                sharing_node_loss = weight * criterion2(output_gather, node_target)
+                sharing_node_loss = weight * criterion_BCE(output_gather, node_target)
                 loss += sharing_node_loss
 
                 if args.sepa_unknown_sharing :
@@ -324,7 +330,7 @@ def train(epoch):
                     unknown_output_gather = F.sigmoid(outputs[:,num_classes+1].masked_select(select_unknown))
                     if unknown_output_gather.size(0) > 0 :
                         unknown_node_target = torch.zeros(unknown_output_gather.size()).cuda()
-                        unknown_node_loss = weight * criterion2(unknown_output_gather, unknown_node_target)
+                        unknown_node_loss = weight * criterion_BCE(unknown_output_gather, unknown_node_target)
                         loss += unknown_node_loss
             else :
                 pass
@@ -367,11 +373,11 @@ def test(epoch):
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = Variable(inputs, volatile=True), Variable(targets)
         outputs = net(inputs)
-        loss = criterion(outputs[:,:num_classes], targets)
+        loss = criterion_CE(outputs[:,:num_classes], targets)
         temp1_accum = loss.detach().cpu() * (1./(batch_idx+1.)) + temp1_accum * (batch_idx/(batch_idx+1.))
         if 'bce' in args.loss :
             bce_targets = target_transform_for_elementwise_bce(targets, num_class=num_classes).cuda()
-            temp2 = criterion2(F.sigmoid(outputs[:,:num_classes]), bce_targets)
+            temp2 = criterion_BCE(F.sigmoid(outputs[:,:num_classes]), bce_targets)
             temp2_accum = temp2.detach().cpu() * (1./(batch_idx+1.)) + temp2_accum *  (batch_idx/(batch_idx+1.))
             loss += temp2
         test_loss += loss.item()
@@ -406,7 +412,7 @@ def test(epoch):
             os.mkdir(save_point)
         torch.save(state, save_point+file_name+'.t7')
         best_acc = acc
-    if epoch > 100 and (epoch % 10 == 0 ):
+    if epoch >= 100 and (epoch % 50 == 0 ):
         print('| Saving model...\t\t\tTop1 = %.2f%%' %(acc), '{}epoch: '.format(epoch))
         state = {
                 'net':net.module if use_cuda else net,
