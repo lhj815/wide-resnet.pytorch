@@ -129,6 +129,9 @@ def getNetwork(args):
         elif (args.net_type == 'resnet'):
             net = ResNet(args.depth, num_classes)
             file_name = 'resnet-'+str(args.depth)
+        elif (args.net_type == 'resnet_mahala'):
+            net = ResNet34(num_c=num_classes)
+            file_name = 'resnet34'
         elif (args.net_type == 'wide-resnet'):
             net = Wide_ResNet(args.depth, num_classes, args.widen_factor, dropRate=args.dropout)
             file_name = 'wide-resnet-'+str(args.depth)+'x'+str(args.widen_factor)
