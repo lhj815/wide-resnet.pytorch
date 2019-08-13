@@ -230,6 +230,7 @@ def train(epoch):
 
 
         loss = criterion(outputs[:,:num_sampling], targets)  # Loss
+        # loss = criterion(outputs, targets)  # Loss
         ce_loss = torch.zeros((1)).cuda()
         unknown_node_loss = torch.zeros((1)).cuda()
         temp1_accum = loss.detach().cpu() * (1./(batch_idx+1.)) + temp1_accum * (batch_idx/(batch_idx+1.))

@@ -79,8 +79,10 @@ def write_output(output, target, output_folder, epoch, num_classes=10, mode='ce'
         output = F.softmax(output)
     elif mode == 'bce':
         output = F.sigmoid(output)
+    elif mode == 'ce_bce':
+        output = F.sigmoid(output)
     else:
-        print('loss_error')
+        print('write_output - loss_error')
         exit()
 
     max_output, pred = output[:,:num_classes].data.max(1) # get the index of the max log-probability
@@ -228,12 +230,13 @@ def sampling_for_cifar100(outputs=None, targets=None, num_of_sampling=10, num_cl
     new_index = sampled_list
 
 
-    new_outputs = torch.zeros((batch_size, num_of_sampling+9)).cuda()
-    new_targets = torch.zeros((batch_size, num_of_sampling+9)).float().cuda()
-    new_targets[:,:10] = 1
+    num_copy = 19
+    new_outputs = torch.zeros((batch_size, num_of_sampling+num_copy)).cuda()
+    new_targets = torch.zeros((batch_size, num_of_sampling+num_copy)).float().cuda()
+    new_targets[:,:num_copy+1] = 1
     for i in range(batch_size):
-        new_outputs[i,9:] = outputs[i][new_index[i][:]]
-        new_outputs[i,:9] = new_outputs[i,9]
+        new_outputs[i,num_copy:] = outputs[i][new_index[i][:]]
+        new_outputs[i,:num_copy] = new_outputs[i,num_copy]
     # print('output[0]:', outputs[0], '| target[0] :', targets[0])
     # print('new_index[0] :', new_index[0])
     return new_outputs, new_targets

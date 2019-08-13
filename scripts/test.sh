@@ -1,5 +1,5 @@
 # export check_point='20190810-233740gpu1_softmax_ent0.1_300epoch_81.41%'
-export check_point='original_81.05%'
+export check_point='20190812-190914gpu0_ce_bce__1.0ce_5.0bce_300epoch_20cp_80.95%'
 
 export dataset='cifar100'
 export out_dataset='Tiny'

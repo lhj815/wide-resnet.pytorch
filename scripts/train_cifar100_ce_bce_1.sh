@@ -1,13 +1,15 @@
 # # baseline
 export dataset='cifar100'
 # export out_dataset='SVHN'
-export save=./checkpoint/$dataset/`(date "+%Y%m%d-%H%M%S")`'gpu1_softmax_ent0.5_300epoch'/
+# export save=./checkpoint/$dataset/`(date "+%Y%m%d-%H%M%S")`'gpu1_softmax_ent1.0_300epoch'/
+export save=./checkpoint/$dataset/`(date "+%Y%m%d-%H%M%S")`'gpu1_soft_5.0sharing_50ent_300epoch_all_logit'/
+
 mkdir -p $save
 mkdir $save/copy
 cp -r src $save/copy
 cp -r scripts $save/copy
 
-CUDA_VISIBLE_DEVICES=0 python2 src/main.py \
+CUDA_VISIBLE_DEVICES=1 python2 src/main_cifar100.py \
 --out_folder $save \
 --lr 0.1 \
 --net_type wide-resnet \
@@ -16,7 +18,9 @@ CUDA_VISIBLE_DEVICES=0 python2 src/main.py \
 --dataset $dataset \
 \
 --loss ce \
---ce_entropy 0.5 \
+--sharing 5.0 \
+--ent 50.0 \
+# --ce_entropy 1.0 \
 # --sampling_rate 0.1 \
 # --sigmoid_sum 1.0 \
 # --resume
